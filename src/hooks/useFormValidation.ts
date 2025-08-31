@@ -11,15 +11,9 @@ export interface CommonAreaData {
   recommendations: string;
   schedule: {
     [key: string]: {
-      session1: {
-        openTime: string;
-        closeTime: string;
-      };
-      session2: {
-        openTime: string;
-        closeTime: string;
-      };
-    };
+      openTime: string;
+      closeTime: string;
+    }[];
   };
 }
 
@@ -37,13 +31,13 @@ const initialData: CommonAreaData = {
   cost: '',
   recommendations: '',
   schedule: {
-    monday: { session1: { openTime: '', closeTime: '' }, session2: { openTime: '', closeTime: '' } },
-    tuesday: { session1: { openTime: '', closeTime: '' }, session2: { openTime: '', closeTime: '' } },
-    wednesday: { session1: { openTime: '', closeTime: '' }, session2: { openTime: '', closeTime: '' } },
-    thursday: { session1: { openTime: '', closeTime: '' }, session2: { openTime: '', closeTime: '' } },
-    friday: { session1: { openTime: '', closeTime: '' }, session2: { openTime: '', closeTime: '' } },
-    saturday: { session1: { openTime: '', closeTime: '' }, session2: { openTime: '', closeTime: '' } },
-    sunday: { session1: { openTime: '', closeTime: '' }, session2: { openTime: '', closeTime: '' } },
+    monday: [{ openTime: '', closeTime: '' }],
+    tuesday: [{ openTime: '', closeTime: '' }],
+    wednesday: [{ openTime: '', closeTime: '' }],
+    thursday: [{ openTime: '', closeTime: '' }],
+    friday: [{ openTime: '', closeTime: '' }],
+    saturday: [{ openTime: '', closeTime: '' }],
+    sunday: [{ openTime: '', closeTime: '' }],
   },
 };
 
@@ -92,47 +86,41 @@ export const useFormValidation = () => {
     const scheduleErrors: ValidationErrors = {};
     
     Object.entries(schedule).forEach(([day, sessions]) => {
-      // Validar que si hay una hora de apertura, también haya una de cierre
-      if (sessions.session1.openTime && !sessions.session1.closeTime) {
-        scheduleErrors[`${day}.session1.closeTime`] = 'La hora de cierre es obligatoria';
-      }
-      if (sessions.session1.closeTime && !sessions.session1.openTime) {
-        scheduleErrors[`${day}.session1.openTime`] = 'La hora de apertura es obligatoria';
-      }
-      if (sessions.session2.openTime && !sessions.session2.closeTime) {
-        scheduleErrors[`${day}.session2.closeTime`] = 'La hora de cierre es obligatoria';
-      }
-      if (sessions.session2.closeTime && !sessions.session2.openTime) {
-        scheduleErrors[`${day}.session2.openTime`] = 'La hora de apertura es obligatoria';
-      }
-
-      // Validar que la hora de apertura sea menor a la de cierre
-      if (sessions.session1.openTime && sessions.session1.closeTime) {
-        const openMinutes = timeToMinutes(sessions.session1.openTime);
-        const closeMinutes = timeToMinutes(sessions.session1.closeTime);
-        if (openMinutes >= closeMinutes) {
-          scheduleErrors[`${day}.session1.closeTime`] = 'La hora de cierre debe ser posterior a la de apertura';
+      sessions.forEach((session, sessionIndex) => {
+        // Validar que si hay una hora de apertura, también haya una de cierre
+        if (session.openTime && !session.closeTime) {
+          scheduleErrors[`${day}.${sessionIndex}.closeTime`] = 'La hora de cierre es obligatoria';
         }
-      }
-
-      if (sessions.session2.openTime && sessions.session2.closeTime) {
-        const openMinutes = timeToMinutes(sessions.session2.openTime);
-        const closeMinutes = timeToMinutes(sessions.session2.closeTime);
-        if (openMinutes >= closeMinutes) {
-          scheduleErrors[`${day}.session2.closeTime`] = 'La hora de cierre debe ser posterior a la de apertura';
+        if (session.closeTime && !session.openTime) {
+          scheduleErrors[`${day}.${sessionIndex}.openTime`] = 'La hora de apertura es obligatoria';
         }
-      }
 
-      // Validar que las dos jornadas no se solapen
-      if (sessions.session1.openTime && sessions.session1.closeTime && 
-          sessions.session2.openTime && sessions.session2.closeTime) {
-        const session1Start = timeToMinutes(sessions.session1.openTime);
-        const session1End = timeToMinutes(sessions.session1.closeTime);
-        const session2Start = timeToMinutes(sessions.session2.openTime);
-        const session2End = timeToMinutes(sessions.session2.closeTime);
+        // Validar que la hora de apertura sea menor a la de cierre
+        if (session.openTime && session.closeTime) {
+          const openMinutes = timeToMinutes(session.openTime);
+          const closeMinutes = timeToMinutes(session.closeTime);
+          if (openMinutes >= closeMinutes) {
+            scheduleErrors[`${day}.${sessionIndex}.closeTime`] = 'La hora de cierre debe ser posterior a la de apertura';
+          }
+        }
+      });
 
-        if ((session2Start < session1End && session2End > session1Start)) {
-          scheduleErrors[`${day}.session2.openTime`] = 'Las jornadas no pueden solaparse';
+      // Validar que las jornadas no se solapen entre sí
+      for (let i = 0; i < sessions.length; i++) {
+        for (let j = i + 1; j < sessions.length; j++) {
+          const session1 = sessions[i];
+          const session2 = sessions[j];
+          
+          if (session1.openTime && session1.closeTime && session2.openTime && session2.closeTime) {
+            const session1Start = timeToMinutes(session1.openTime);
+            const session1End = timeToMinutes(session1.closeTime);
+            const session2Start = timeToMinutes(session2.openTime);
+            const session2End = timeToMinutes(session2.closeTime);
+
+            if ((session2Start < session1End && session2End > session1Start)) {
+              scheduleErrors[`${day}.${j}.openTime`] = 'Las jornadas no pueden solaparse';
+            }
+          }
         }
       }
     });
@@ -174,23 +162,21 @@ export const useFormValidation = () => {
     }
   }, [errors]);
 
-  const updateSchedule = useCallback((day: string, session: 'session1' | 'session2', field: 'openTime' | 'closeTime', value: string) => {
+  const updateSchedule = useCallback((day: string, sessionIndex: number, field: 'openTime' | 'closeTime', value: string) => {
     setData(prev => ({
       ...prev,
       schedule: {
         ...prev.schedule,
-        [day]: {
-          ...prev.schedule[day],
-          [session]: {
-            ...prev.schedule[day][session],
-            [field]: value
-          }
-        }
+        [day]: prev.schedule[day].map((session, index) =>
+          index === sessionIndex
+            ? { ...session, [field]: value }
+            : session
+        )
       }
     }));
 
     // Limpiar errores relacionados
-    const errorKey = `${day}.${session}.${field}`;
+    const errorKey = `${day}.${sessionIndex}.${field}`;
     if (errors[errorKey]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -199,6 +185,37 @@ export const useFormValidation = () => {
       });
     }
   }, [errors]);
+
+  const addSession = useCallback((day: string) => {
+    setData(prev => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        [day]: [...prev.schedule[day], { openTime: '', closeTime: '' }]
+      }
+    }));
+  }, []);
+
+  const removeSession = useCallback((day: string, sessionIndex: number) => {
+    setData(prev => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        [day]: prev.schedule[day].filter((_, index) => index !== sessionIndex)
+      }
+    }));
+
+    // Limpiar errores relacionados con la sesión eliminada
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      Object.keys(newErrors).forEach(key => {
+        if (key.startsWith(`${day}.${sessionIndex}.`)) {
+          delete newErrors[key];
+        }
+      });
+      return newErrors;
+    });
+  }, []);
 
   const resetForm = useCallback(() => {
     setData(initialData);
@@ -231,6 +248,8 @@ export const useFormValidation = () => {
     isSubmitting,
     updateField,
     updateSchedule,
+    addSession,
+    removeSession,
     validateForm,
     resetForm,
     submitForm,

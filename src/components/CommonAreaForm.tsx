@@ -27,6 +27,8 @@ export const CommonAreaForm: React.FC = () => {
     isSubmitting,
     updateField,
     updateSchedule,
+    addSession,
+    removeSession,
     resetForm,
     submitForm
   } = useFormValidation();
@@ -286,6 +288,8 @@ export const CommonAreaForm: React.FC = () => {
             schedule={data.schedule}
             errors={errors}
             onScheduleUpdate={updateSchedule}
+            onAddSession={addSession}
+            onRemoveSession={removeSession}
           />
 
           {/* Botones de Acción */}
