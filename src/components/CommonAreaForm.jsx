@@ -26,6 +26,8 @@ const validationSchema = Yup.object({
   capacity: Yup.number()
     .required('El aforo es obligatorio')
     .min(1, 'El aforo debe ser mayor a 0'),
+  tipoZona: Yup.string().required('Debe seleccionar un tipo de zona'),
+  zonaCompartida: Yup.string(),
   uniqueReservation: Yup.boolean().required('Debe seleccionar una opción'),
   reservationDuration: Yup.number()
     .required('La duración es obligatoria')
@@ -85,6 +87,8 @@ const validationSchema = Yup.object({
 const initialValues = {
   name: '',
   capacity: '',
+  tipoZona: '',
+  zonaCompartida: '',
   uniqueReservation: '',
   reservationDuration: '',
   durationUnit: 'hours',
@@ -246,6 +250,57 @@ export const CommonAreaForm = () => {
                         </p>
                       )}
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        Tipo de zona *
+                      </Label>
+                      <Select
+                        value={values.tipoZona}
+                        onValueChange={(value) => setFieldValue('tipoZona', value)}
+                      >
+                        <SelectTrigger className={`transition-all duration-200 ${
+                          errors.tipoZona && touched.tipoZona
+                            ? 'border-destructive focus:border-destructive ring-destructive/20' 
+                            : 'focus:border-primary focus:ring-primary/20'
+                        }`}>
+                          <SelectValue placeholder="Seleccionar tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Tipo 1</SelectItem>
+                          <SelectItem value="2">Tipo 2</SelectItem>
+                          <SelectItem value="3">Tipo 3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.tipoZona && touched.tipoZona && (
+                        <p className="text-sm text-destructive flex items-center gap-1 animate-slide-in">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.tipoZona}
+                        </p>
+                      )}
+                    </div>
+
+                    {values.tipoZona && (values.tipoZona === '2' || values.tipoZona === '3') && (
+                      <div className="space-y-2">
+                        <Label htmlFor="zonaCompartida" className="text-sm font-medium">
+                          ID Zona compartida
+                        </Label>
+                        <Input
+                          id="zonaCompartida"
+                          name="zonaCompartida"
+                          type="text"
+                          placeholder="Opcional"
+                          value={values.zonaCompartida}
+                          onChange={(e) => setFieldValue('zonaCompartida', e.target.value)}
+                          className="transition-all duration-200 focus:border-primary focus:ring-primary/20"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          *Dejar vacío si no es compartido
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
